@@ -160,6 +160,38 @@ class GitHubAnalyzer:
         response = self._make_request(url, params)
         return response.json()
     
+    def get_commits_affecting_file(self, repo: str, base_ref: str, head_ref: str, file_path: str) -> List[Dict]:
+        """Get commits between two refs that affected a specific file"""
+        url = f"https://api.github.com/repos/{repo}/commits"
+        params = {
+            'sha': head_ref,
+            'path': file_path,
+            'per_page': 100  # Get more commits to ensure we capture all relevant ones
+        }
+        
+        response = self._make_request(url, params)
+        all_commits = response.json()
+        
+        # Get the base commit to determine the cutoff point
+        try:
+            base_commit_response = self._make_request(f"https://api.github.com/repos/{repo}/commits/{base_ref}")
+            base_commit_date = base_commit_response.json()['commit']['committer']['date']
+        except:
+            # If we can't get base commit, return all commits (fallback)
+            return all_commits
+        
+        # Filter commits to only include those after the base commit
+        relevant_commits = []
+        for commit in all_commits:
+            commit_date = commit['commit']['committer']['date']
+            if commit_date > base_commit_date:
+                relevant_commits.append(commit)
+            else:
+                # Once we reach the base commit date, we can stop
+                break
+        
+        return relevant_commits
+    
     def get_changed_python_files(self, repo: str, base_ref: str = "HEAD~1", head_ref: str = "HEAD") -> List[FileChange]:
         """Get all changed Python files between two refs"""
         comparison = self.get_repository_comparison(repo, base_ref, head_ref)
@@ -399,7 +431,7 @@ class ReportGenerator:
         return '\n'.join(diff_lines)
     
     def save_diff_files(self, file_change: FileChange, function_changes: Dict[str, Tuple[Optional[FunctionInfo], Optional[FunctionInfo]]], 
-                       output_subdir: str) -> List[str]:
+                       output_subdir: str, commits_info: Optional[List[Dict]] = None) -> List[str]:
         """Save individual diff files for each changed function/class"""
         repo_name = file_change.repo.replace('/', '_')
         file_base = Path(file_change.filename).stem
@@ -425,6 +457,7 @@ class ReportGenerator:
             
             # Write diff file
             with open(diff_path, 'w', encoding='utf-8') as f:
+                # Write header with basic info
                 f.write(f"# Diff for {node_type}: {name}\n")
                 f.write(f"# File: {file_change.filename}\n")
                 f.write(f"# Repository: {file_change.repo}\n")
@@ -433,7 +466,37 @@ class ReportGenerator:
                     f.write(f"# Old SHA: {file_change.old_sha}\n")
                 if new_def:
                     f.write(f"# New SHA: {file_change.new_sha}\n")
-                f.write("#" + "="*60 + "\n\n")
+                f.write("#" + "="*60 + "\n")
+                
+                # Add commit information if available
+                if commits_info:
+                    f.write("#\n")
+                    f.write("# RELATED COMMITS:\n")
+                    f.write("#" + "-"*40 + "\n")
+                    for commit in commits_info:
+                        commit_info = commit['commit']
+                        author = commit_info['author']
+                        committer = commit_info['committer']
+                        
+                        f.write(f"# Commit: {commit['sha'][:8]}\n")
+                        f.write(f"# Date: {committer['date']}\n")
+                        f.write(f"# Author: {author['name']} <{author['email']}>\n")
+                        if committer['name'] != author['name']:
+                            f.write(f"# Committer: {committer['name']} <{committer['email']}>\n")
+                        
+                        # Clean up commit message (remove extra whitespace, limit length)
+                        message = commit_info['message'].strip()
+                        # Split into lines and add # prefix to each line
+                        message_lines = message.split('\n')
+                        f.write(f"# Message: {message_lines[0]}\n")
+                        # Add additional lines if they exist (for multi-line commit messages)
+                        for line in message_lines[1:]:
+                            if line.strip():  # Skip empty lines
+                                f.write(f"#          {line.strip()}\n")
+                        f.write("#\n")
+                    f.write("#" + "="*60 + "\n")
+                
+                f.write("\n")
                 f.write(diff_content)
             
             diff_files.append(str(diff_path))
@@ -544,10 +607,12 @@ class GitHubChangeTracker:
                         
                         # Save diff files for function/class changes
                         if save_diffs and file_change.filename in result.function_changes:
+                            commits_info = self.github_analyzer.get_commits_affecting_file(repo, base_ref, head_ref, file_change.filename)
                             diff_files = self.report_generator.save_diff_files(
                                 file_change, 
                                 result.function_changes[file_change.filename],
-                                f"file_versions_{base_ref}_{head_ref}"
+                                f"file_versions_{base_ref}_{head_ref}",
+                                commits_info
                             )
                             for diff_file in diff_files:
                                 print(f"  Saved diff: {diff_file}")

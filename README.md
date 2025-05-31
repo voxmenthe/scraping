@@ -205,7 +205,8 @@ uv run python -m scraping.github_cli owner/repo --output-dir analysis_results
 **GitHub Analysis Features:**
 - **Function-level change detection** using AST parsing
 - **Side-by-side comparisons** of old vs new code
-- **Unified diff files** for each changed function/class
+- **Unified diff files** for each changed function/class with commit history
+- **Commit message integration** - each diff includes related commit messages, authors, and dates
 - **Comprehensive reports** with metadata and statistics
 - **Batch processing** of multiple repositories
 - **Historical analysis** over time periods
@@ -342,6 +343,21 @@ github_analysis_output/
 # Status: modified
 # Old SHA: abc123
 # New SHA: def456
+#============================================================
+#
+# RELATED COMMITS:
+#----------------------------------------
+# Commit: abc123de
+# Date: 2024-01-15T10:30:00Z
+# Author: John Doe <john@example.com>
+# Message: Add optional third parameter to calculate_sum
+#          This allows for more flexible sum calculations.
+#
+# Commit: def456ab
+# Date: 2024-01-15T11:00:00Z
+# Author: Jane Smith <jane@example.com>
+# Message: Add debug print statement
+#
 #============================================================
 
 --- src/utils.py (old) - function: calculate_sum
