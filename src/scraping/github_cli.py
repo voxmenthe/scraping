@@ -40,6 +40,9 @@ Examples:
 
   # Custom output directory
   python -m scraping.github_cli owner/repo --output-dir my_analysis
+  
+  # Skip diff file generation (saves space)
+  python -m scraping.github_cli owner/repo --no-diffs
         """
     )
     
@@ -99,6 +102,12 @@ Examples:
         '--no-save-files',
         action='store_true',
         help='Do not save individual file versions to disk'
+    )
+    
+    parser.add_argument(
+        '--no-diffs',
+        action='store_true',
+        help='Do not generate diff files for function/class changes'
     )
     
     parser.add_argument(
@@ -181,6 +190,7 @@ def main():
         print(f"Base reference: {args.base}")
         print(f"Head reference: {args.head}")
         print(f"Save files: {not args.no_save_files}")
+        print(f"Save diffs: {not args.no_diffs}")
     
     try:
         if args.history:
@@ -207,7 +217,8 @@ def main():
                 repos=repositories,
                 base_ref=args.base,
                 head_ref=args.head,
-                save_files=not args.no_save_files
+                save_files=not args.no_save_files,
+                save_diffs=not args.no_diffs
             )
             
             if results:

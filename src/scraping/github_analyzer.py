@@ -10,6 +10,7 @@ import ast
 import json
 import os
 import base64
+import difflib
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Tuple, Set, Union
 from pathlib import Path
@@ -374,6 +375,71 @@ class ReportGenerator:
         
         return '\n'.join(result)
     
+    def generate_unified_diff(self, old_def: Optional[FunctionInfo], 
+                            new_def: Optional[FunctionInfo], name: str, 
+                            filename: str) -> str:
+        """Generate unified diff for function/class changes"""
+        old_code = old_def.source_code if old_def else ""
+        new_code = new_def.source_code if new_def else ""
+        
+        # Split into lines for difflib
+        old_lines = old_code.splitlines(keepends=True) if old_code else []
+        new_lines = new_code.splitlines(keepends=True) if new_code else []
+        
+        # Generate unified diff
+        node_type = (new_def or old_def).node_type
+        diff_lines = difflib.unified_diff(
+            old_lines,
+            new_lines,
+            fromfile=f"{filename} (old) - {node_type}: {name}",
+            tofile=f"{filename} (new) - {node_type}: {name}",
+            lineterm=""
+        )
+        
+        return '\n'.join(diff_lines)
+    
+    def save_diff_files(self, file_change: FileChange, function_changes: Dict[str, Tuple[Optional[FunctionInfo], Optional[FunctionInfo]]], 
+                       output_subdir: str) -> List[str]:
+        """Save individual diff files for each changed function/class"""
+        repo_name = file_change.repo.replace('/', '_')
+        file_base = Path(file_change.filename).stem
+        
+        output_path = self.output_dir / output_subdir / repo_name / "diffs"
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        diff_files = []
+        
+        for name, (old_def, new_def) in function_changes.items():
+            # Generate diff content
+            diff_content = self.generate_unified_diff(old_def, new_def, name, file_change.filename)
+            
+            # Skip empty diffs (shouldn't happen, but just in case)
+            if not diff_content.strip():
+                continue
+            
+            # Create filename for this diff
+            node_type = (new_def or old_def).node_type
+            safe_name = name.replace('/', '_').replace('\\', '_').replace(':', '_')
+            diff_filename = f"{file_base}_{node_type}_{safe_name}.diff"
+            diff_path = output_path / diff_filename
+            
+            # Write diff file
+            with open(diff_path, 'w', encoding='utf-8') as f:
+                f.write(f"# Diff for {node_type}: {name}\n")
+                f.write(f"# File: {file_change.filename}\n")
+                f.write(f"# Repository: {file_change.repo}\n")
+                f.write(f"# Status: {file_change.status}\n")
+                if old_def:
+                    f.write(f"# Old SHA: {file_change.old_sha}\n")
+                if new_def:
+                    f.write(f"# New SHA: {file_change.new_sha}\n")
+                f.write("#" + "="*60 + "\n\n")
+                f.write(diff_content)
+            
+            diff_files.append(str(diff_path))
+        
+        return diff_files
+    
     def save_file_versions(self, file_change: FileChange, output_subdir: str) -> Tuple[Optional[str], Optional[str]]:
         """Save old and new versions of a file to disk"""
         repo_name = file_change.repo.replace('/', '_')
@@ -455,7 +521,7 @@ class GitHubChangeTracker:
         self.output_dir = Path(output_dir)
     
     def analyze_repositories(self, repos: List[str], base_ref: str = "HEAD~1", 
-                           head_ref: str = "HEAD", save_files: bool = True) -> List[AnalysisResult]:
+                           head_ref: str = "HEAD", save_files: bool = True, save_diffs: bool = True) -> List[AnalysisResult]:
         """Analyze multiple repositories and generate comprehensive reports"""
         all_results = []
         
@@ -464,9 +530,10 @@ class GitHubChangeTracker:
                 result = self.github_analyzer.analyze_repository(repo, base_ref, head_ref)
                 all_results.append(result)
                 
-                # Save individual file versions if requested
+                # Save individual file versions and diffs if requested
                 if save_files:
                     for file_change in result.file_changes:
+                        # Save old and new file versions
                         old_path, new_path = self.report_generator.save_file_versions(
                             file_change, f"file_versions_{base_ref}_{head_ref}"
                         )
@@ -474,6 +541,16 @@ class GitHubChangeTracker:
                             print(f"  Saved old version: {old_path}")
                         if new_path:
                             print(f"  Saved new version: {new_path}")
+                        
+                        # Save diff files for function/class changes
+                        if save_diffs and file_change.filename in result.function_changes:
+                            diff_files = self.report_generator.save_diff_files(
+                                file_change, 
+                                result.function_changes[file_change.filename],
+                                f"file_versions_{base_ref}_{head_ref}"
+                            )
+                            for diff_file in diff_files:
+                                print(f"  Saved diff: {diff_file}")
                 
             except Exception as e:
                 print(f"Error analyzing repository {repo}: {e}")

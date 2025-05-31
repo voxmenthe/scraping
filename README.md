@@ -183,6 +183,33 @@ results = scraper.comprehensive_scrape("https://docs-site.com")
 # Extracts code examples
 ```
 
+### 4. GitHub Repository Analysis
+Track Python code changes across repositories with function-level granularity:
+```bash
+# Analyze specific repositories
+uv run python -m scraping.github_cli owner/repo1 owner/repo2
+
+# Compare specific commit ranges
+uv run python -m scraping.github_cli owner/repo --base HEAD~5 --head HEAD
+
+# Auto-discover repositories using GitHub CLI
+uv run python -m scraping.github_cli --auto-discover
+
+# Analyze recent history
+uv run python -m scraping.github_cli owner/repo --history --days 7
+
+# Generate diff files for each function/class change
+uv run python -m scraping.github_cli owner/repo --output-dir analysis_results
+```
+
+**GitHub Analysis Features:**
+- **Function-level change detection** using AST parsing
+- **Side-by-side comparisons** of old vs new code
+- **Unified diff files** for each changed function/class
+- **Comprehensive reports** with metadata and statistics
+- **Batch processing** of multiple repositories
+- **Historical analysis** over time periods
+
 ## 📋 Command Line Options
 
 ### Basic Options
@@ -214,6 +241,29 @@ results = scraper.comprehensive_scrape("https://docs-site.com")
 ```bash
 --output-dir          Output directory for batch analysis
 --verbose             Show detailed progress and statistics
+```
+
+### GitHub Analysis Options
+```bash
+# Repository specification
+python -m scraping.github_cli owner/repo1 owner/repo2  # Specific repos
+--auto-discover      Auto-discover repos using GitHub CLI
+
+# Commit range specification  
+--base HEAD~5         Base reference for comparison (default: HEAD~1)
+--head HEAD           Head reference for comparison (default: HEAD)
+
+# Analysis modes
+--history             Analyze repository history instead of single comparison
+--days 7              Number of days back to analyze with --history
+
+# Output control
+--no-save-files       Do not save individual file versions to disk
+--no-diffs            Do not generate diff files for function/class changes
+--output-dir DIR      Custom output directory (default: github_analysis_output)
+
+# Authentication
+--token TOKEN         GitHub API token (or set GITHUB_TOKEN env var)
 ```
 
 ## 🔍 Bot Protection Bypass Techniques
@@ -268,7 +318,46 @@ utils.human_delay(min_seconds=1.0, max_seconds=3.0)
 
 ## 📊 Output Format
 
-### Text Output Example
+### GitHub Analysis Output Structure
+```
+github_analysis_output/
+├── github_changes_comprehensive_report.txt    # Main analysis report
+├── file_versions_HEAD~1_HEAD/                 # File versions by commit range
+│   ├── owner_repo/                            # Repository-specific folder
+│   │   ├── module_old.py                      # Old version of changed file
+│   │   ├── module_new.py                      # New version of changed file
+│   │   └── diffs/                             # Individual diff files
+│   │       ├── module_function_calculate_sum.diff
+│   │       ├── module_class_DataProcessor.diff
+│   │       └── module_function_validate_input.diff
+│   └── another_repo/
+│       └── ...
+```
+
+**Diff File Example:**
+```diff
+# Diff for function: calculate_sum
+# File: src/utils.py
+# Repository: owner/repo
+# Status: modified
+# Old SHA: abc123
+# New SHA: def456
+#============================================================
+
+--- src/utils.py (old) - function: calculate_sum
++++ src/utils.py (new) - function: calculate_sum
+@@ -1,4 +1,5 @@
+-def calculate_sum(a, b):
+-    """Calculate sum of two numbers"""
+-    result = a + b
++def calculate_sum(a, b, c=0):
++    """Calculate sum of two or three numbers"""
++    result = a + b + c
++    print(f"Sum calculated: {result}")
+     return result
+```
+
+### Web Scraping Text Output Example
 ```
 DYNAMIC WEB SCRAPING SPECIFICATION
 ==================================================
