@@ -4,11 +4,25 @@ Example usage of the GitHub Repository Change Analyzer
 """
 
 import os
+
+# Load .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not available, skip
+
 from .github_analyzer import GitHubChangeTracker
 
 
 def example_basic_analysis():
     """Example of basic repository analysis"""
+    # Check for GitHub token
+    github_api_token = os.getenv('GITHUB_TOKEN')
+    if not github_api_token:
+        print("Please set GITHUB_TOKEN environment variable")
+        return
+    
     # Example repositories (replace with your own)
     repositories = [
         "octocat/Hello-World",
@@ -16,8 +30,7 @@ def example_basic_analysis():
     ]
     
     # Initialize the tracker
-    # Make sure to set GITHUB_TOKEN environment variable
-    tracker = GitHubChangeTracker(output_dir="example_output")
+    tracker = GitHubChangeTracker(token=github_api_token, output_dir="example_output")
     
     # Analyze repositories
     print("Running basic analysis...")
@@ -48,9 +61,14 @@ def example_basic_analysis():
 
 def example_history_analysis():
     """Example of analyzing repository history"""
+    github_api_token = os.getenv('GITHUB_TOKEN')
+    if not github_api_token:
+        print("Please set GITHUB_TOKEN environment variable")
+        return
+    
     repo = "octocat/Hello-World"
     
-    tracker = GitHubChangeTracker(output_dir="history_output")
+    tracker = GitHubChangeTracker(token=github_api_token, output_dir="history_output")
     
     print(f"Analyzing history for {repo}...")
     results = tracker.analyze_repository_history(repo, days_back=14)
@@ -62,9 +80,14 @@ def example_history_analysis():
 
 def example_custom_analysis():
     """Example of custom analysis with specific commits"""
+    github_api_token = os.getenv('GITHUB_TOKEN')
+    if not github_api_token:
+        print("Please set GITHUB_TOKEN environment variable")
+        return
+    
     repo = "octocat/Hello-World"
     
-    tracker = GitHubChangeTracker(output_dir="custom_output")
+    tracker = GitHubChangeTracker(token=github_api_token, output_dir="custom_output")
     
     # Analyze specific commit range
     result = tracker.github_analyzer.analyze_repository(
@@ -80,9 +103,14 @@ def example_custom_analysis():
 
 def example_with_filtering():
     """Example showing how to filter results"""
+    github_api_token = os.getenv('GITHUB_TOKEN')
+    if not github_api_token:
+        print("Please set GITHUB_TOKEN environment variable")
+        return
+    
     repositories = ["octocat/Hello-World"]
     
-    tracker = GitHubChangeTracker(output_dir="filtered_output")
+    tracker = GitHubChangeTracker(token=github_api_token, output_dir="filtered_output")
     results = tracker.analyze_repositories(repositories)
     
     # Filter to only show added functions
@@ -102,7 +130,8 @@ def example_with_filtering():
 
 if __name__ == "__main__":
     # Make sure you have GITHUB_TOKEN set in your environment
-    if not os.environ.get('GITHUB_TOKEN'):
+    github_api_token = os.getenv('GITHUB_TOKEN')
+    if not github_api_token:
         print("Please set GITHUB_TOKEN environment variable")
         print("You can get a token from: https://github.com/settings/tokens")
         exit(1)

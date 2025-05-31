@@ -16,6 +16,13 @@ from pathlib import Path
 import requests
 import subprocess
 
+# Load .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not available, skip
+
 
 @dataclass
 class FunctionInfo:
@@ -65,9 +72,18 @@ class GitHubAnalyzer:
     
     def __init__(self, token: Optional[str] = None, output_dir: str = "output"):
         """Initialize with GitHub token for API access"""
-        self.token = token or os.environ.get('GITHUB_TOKEN')
+        github_api_token = os.getenv('GITHUB_TOKEN')
+        self.token = token or github_api_token
         if not self.token:
             raise ValueError("GitHub token is required. Set GITHUB_TOKEN environment variable or pass token parameter.")
+        
+        # Debug: Show token source (remove this in production)
+        if token:
+            print(f"Debug: Using provided token (length: {len(token)})")
+        elif github_api_token:
+            print(f"Debug: Using environment token (length: {len(github_api_token)})")
+        else:
+            print("Debug: No token found")
         
         self.headers = {
             'Authorization': f'token {self.token}',
@@ -430,6 +446,10 @@ class GitHubChangeTracker:
     """Main class for tracking GitHub repository changes"""
     
     def __init__(self, token: Optional[str] = None, output_dir: str = "github_analysis_output"):
+        # If no token provided, try to get from environment
+        if token is None:
+            token = os.getenv('GITHUB_TOKEN')
+        
         self.github_analyzer = GitHubAnalyzer(token, output_dir)
         self.report_generator = ReportGenerator(Path(output_dir))
         self.output_dir = Path(output_dir)

@@ -9,6 +9,13 @@ import sys
 from typing import List, Optional
 from datetime import datetime, timedelta
 
+# Load .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not available, skip
+
 from .github_analyzer import GitHubChangeTracker, get_repos_from_gh_cli
 
 
@@ -119,6 +126,23 @@ def main():
     """Main CLI function"""
     args = parse_arguments()
     
+    # Check for GitHub token early
+    github_api_token = os.getenv('GITHUB_TOKEN')
+    
+    if args.verbose:
+        print(f"Environment GITHUB_TOKEN: {'Found' if github_api_token else 'Not found'}")
+        print(f"Command line token: {'Provided' if args.token else 'Not provided'}")
+        if github_api_token:
+            print(f"Token from environment (first 10 chars): {github_api_token[:10]}...")
+    
+    if not github_api_token and not args.token:
+        print("Error: GitHub API token is required.")
+        print("Please set GITHUB_TOKEN environment variable or use --token parameter")
+        print("You can get a token from: https://github.com/settings/tokens")
+        print("\nNote: If you have a .env file, make sure it's in the current directory")
+        print("and contains: GITHUB_TOKEN=your_token_here")
+        sys.exit(1)
+    
     # Determine repositories to analyze
     repositories = []
     
@@ -139,8 +163,9 @@ def main():
     
     # Initialize the tracker
     try:
+        # Pass the explicit token if provided, otherwise let GitHubChangeTracker handle environment lookup
         tracker = GitHubChangeTracker(
-            token=args.token,
+            token=args.token,  # This will be None if not provided, which is fine
             output_dir=args.output_dir
         )
     except ValueError as e:

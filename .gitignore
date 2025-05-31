@@ -1,3 +1,4 @@
 .env
 **/__pycache__
 **/*.pyc
+github_analysis_output
