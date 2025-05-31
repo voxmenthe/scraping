@@ -25,6 +25,190 @@ except ImportError:
     pass  # dotenv not available, skip
 
 
+class DiffAnnotator:
+    """Creates annotated versions of old and new files showing changes"""
+    
+    def __init__(self, old_content: str, new_content: str, annotation_style: str = "comment"):
+        self.old_content = old_content
+        self.new_content = new_content
+        self.annotation_style = annotation_style
+        self.diff_info = self._compute_diff()
+    
+    def _compute_diff(self) -> Dict:
+        """Compute line-by-line differences between old and new content"""
+        old_lines = self.old_content.splitlines() if self.old_content else []
+        new_lines = self.new_content.splitlines() if self.new_content else []
+        
+        matcher = difflib.SequenceMatcher(None, old_lines, new_lines)
+        
+        changes = {
+            'old_line_status': {},  # line_num -> 'unchanged'|'changed'|'removed'
+            'new_line_status': {},  # line_num -> 'unchanged'|'changed'|'added'
+            'line_mappings': {}     # old_line_num -> new_line_num for changed lines
+        }
+        
+        # Initialize all lines as unchanged
+        for i in range(len(old_lines)):
+            changes['old_line_status'][i] = 'unchanged'
+        for i in range(len(new_lines)):
+            changes['new_line_status'][i] = 'unchanged'
+        
+        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+            if tag == 'equal':
+                # Lines are identical - already marked as unchanged
+                continue
+            elif tag == 'replace':
+                # Lines were changed
+                for i in range(i1, i2):
+                    changes['old_line_status'][i] = 'changed'
+                for j in range(j1, j2):
+                    changes['new_line_status'][j] = 'changed'
+                # Create mappings for changed lines
+                for idx, (i, j) in enumerate(zip(range(i1, i2), range(j1, j2))):
+                    changes['line_mappings'][i] = j
+            elif tag == 'delete':
+                # Lines were removed from old
+                for i in range(i1, i2):
+                    changes['old_line_status'][i] = 'removed'
+            elif tag == 'insert':
+                # Lines were added to new
+                for j in range(j1, j2):
+                    changes['new_line_status'][j] = 'added'
+        
+        return changes
+    
+    def _get_annotation_markers(self) -> Dict[str, str]:
+        """Get annotation markers based on style"""
+        if self.annotation_style == "comment":
+            return {
+                'changed': '# [CHANGED] ',
+                'removed': '# [REMOVED] ',
+                'added': '# [ADDED] '
+            }
+        elif self.annotation_style == "inline":
+            return {
+                'changed': '>>> [CHANGED] ',
+                'removed': '>>> [REMOVED] ',
+                'added': '>>> [ADDED] '
+            }
+        elif self.annotation_style == "html":
+            return {
+                'changed': '<span class="changed-line">',
+                'removed': '<span class="removed-line">',
+                'added': '<span class="added-line">'
+            }
+        else:
+            # Default to comment style
+            return {
+                'changed': '# [CHANGED] ',
+                'removed': '# [REMOVED] ',
+                'added': '# [ADDED] '
+            }
+    
+    def create_annotated_old_file(self) -> str:
+        """Create annotated version of old file showing changes and removals"""
+        if not self.old_content:
+            return ""
+        
+        old_lines = self.old_content.splitlines()
+        annotated_lines = []
+        markers = self._get_annotation_markers()
+        
+        for i, line in enumerate(old_lines):
+            status = self.diff_info['old_line_status'].get(i, 'unchanged')
+            
+            # Escape HTML entities if using HTML style
+            if self.annotation_style == "html":
+                line = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            
+            if status == 'changed':
+                if self.annotation_style == "html":
+                    annotated_lines.append(f'<span class="changed-line">{line}</span>')
+                else:
+                    annotated_lines.append(f'{markers["changed"]}{line}')
+            elif status == 'removed':
+                if self.annotation_style == "html":
+                    annotated_lines.append(f'<span class="removed-line">{line}</span>')
+                else:
+                    annotated_lines.append(f'{markers["removed"]}{line}')
+            else:
+                if self.annotation_style == "html":
+                    annotated_lines.append(f'<span class="unchanged-line">{line}</span>')
+                else:
+                    annotated_lines.append(line)
+        
+        result = '\n'.join(annotated_lines)
+        
+        # Add HTML closing tags if needed
+        if self.annotation_style == "html":
+            result += '\n        </pre>\n    </div>\n</body>\n</html>'
+        
+        return result
+    
+    def create_annotated_new_file(self) -> str:
+        """Create annotated version of new file showing additions and changes"""
+        if not self.new_content:
+            return ""
+        
+        new_lines = self.new_content.splitlines()
+        annotated_lines = []
+        markers = self._get_annotation_markers()
+        
+        for i, line in enumerate(new_lines):
+            status = self.diff_info['new_line_status'].get(i, 'unchanged')
+            
+            # Escape HTML entities if using HTML style
+            if self.annotation_style == "html":
+                line = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            
+            if status == 'added':
+                if self.annotation_style == "html":
+                    annotated_lines.append(f'<span class="added-line">{line}</span>')
+                else:
+                    annotated_lines.append(f'{markers["added"]}{line}')
+            elif status == 'changed':
+                if self.annotation_style == "html":
+                    annotated_lines.append(f'<span class="changed-line">{line}</span>')
+                else:
+                    annotated_lines.append(f'{markers["changed"]}{line}')
+            else:
+                if self.annotation_style == "html":
+                    annotated_lines.append(f'<span class="unchanged-line">{line}</span>')
+                else:
+                    annotated_lines.append(line)
+        
+        result = '\n'.join(annotated_lines)
+        
+        # Add HTML closing tags if needed
+        if self.annotation_style == "html":
+            result += '\n        </pre>\n    </div>\n</body>\n</html>'
+        
+        return result
+    
+    def get_change_summary(self) -> Dict[str, int]:
+        """Get summary of changes"""
+        summary = {
+            'lines_added': 0,
+            'lines_removed': 0,
+            'lines_changed': 0,
+            'lines_unchanged': 0
+        }
+        
+        for status in self.diff_info['old_line_status'].values():
+            if status == 'removed':
+                summary['lines_removed'] += 1
+            elif status == 'changed':
+                summary['lines_changed'] += 1
+            else:
+                summary['lines_unchanged'] += 1
+        
+        for status in self.diff_info['new_line_status'].values():
+            if status == 'added':
+                summary['lines_added'] += 1
+        
+        return summary
+
+
 @dataclass
 class FunctionInfo:
     """Information about a function or class definition"""
@@ -365,9 +549,10 @@ class PythonASTAnalyzer:
 class ReportGenerator:
     """Generate reports for the analysis results"""
     
-    def __init__(self, output_dir: Path):
+    def __init__(self, output_dir: Path, annotation_style: str = "comment"):
         self.output_dir = output_dir
         self.output_dir.mkdir(exist_ok=True)
+        self.annotation_style = annotation_style
     
     def generate_side_by_side_comparison(self, old_def: Optional[FunctionInfo], 
                                        new_def: Optional[FunctionInfo], name: str) -> str:
@@ -503,8 +688,9 @@ class ReportGenerator:
         
         return diff_files
     
-    def save_file_versions(self, file_change: FileChange, output_subdir: str) -> Tuple[Optional[str], Optional[str]]:
-        """Save old and new versions of a file to disk"""
+    def save_file_versions(self, file_change: FileChange, output_subdir: str, 
+                          save_annotated: bool = True) -> Dict[str, Optional[str]]:
+        """Save old and new versions of a file to disk, including annotated versions"""
         repo_name = file_change.repo.replace('/', '_')
         file_base = Path(file_change.filename).stem
         file_ext = Path(file_change.filename).suffix
@@ -512,20 +698,176 @@ class ReportGenerator:
         output_path = self.output_dir / output_subdir / repo_name
         output_path.mkdir(parents=True, exist_ok=True)
         
-        old_file_path = None
-        new_file_path = None
+        result = {
+            'old': None,
+            'new': None,
+            'old_annotated': None,
+            'new_annotated': None
+        }
         
+        # Save original files
         if file_change.old_content:
             old_file_path = output_path / f"{file_base}_old{file_ext}"
             with open(old_file_path, 'w', encoding='utf-8') as f:
                 f.write(file_change.old_content)
+            result['old'] = str(old_file_path)
         
         if file_change.new_content:
             new_file_path = output_path / f"{file_base}_new{file_ext}"
             with open(new_file_path, 'w', encoding='utf-8') as f:
                 f.write(file_change.new_content)
+            result['new'] = str(new_file_path)
         
-        return str(old_file_path) if old_file_path else None, str(new_file_path) if new_file_path else None
+        # Save annotated files if requested
+        if save_annotated and (file_change.old_content or file_change.new_content):
+            annotator = DiffAnnotator(
+                file_change.old_content, 
+                file_change.new_content, 
+                self.annotation_style
+            )
+            
+            # Get change summary for informative file headers
+            change_summary = annotator.get_change_summary()
+            
+            # Save annotated old file
+            if file_change.old_content:
+                annotated_old_content = annotator.create_annotated_old_file()
+                if annotated_old_content:
+                    # Add header with change summary
+                    header = self._create_annotation_header(file_change, change_summary, "old")
+                    annotated_old_content = header + annotated_old_content
+                    
+                    # Use appropriate file extension
+                    ext = ".html" if self.annotation_style == "html" else file_ext
+                    old_annotated_path = output_path / f"{file_base}_old_diff{ext}"
+                    with open(old_annotated_path, 'w', encoding='utf-8') as f:
+                        f.write(annotated_old_content)
+                    result['old_annotated'] = str(old_annotated_path)
+            
+            # Save annotated new file
+            if file_change.new_content:
+                annotated_new_content = annotator.create_annotated_new_file()
+                if annotated_new_content:
+                    # Add header with change summary
+                    header = self._create_annotation_header(file_change, change_summary, "new")
+                    annotated_new_content = header + annotated_new_content
+                    
+                    # Use appropriate file extension
+                    ext = ".html" if self.annotation_style == "html" else file_ext
+                    new_annotated_path = output_path / f"{file_base}_new_diff{ext}"
+                    with open(new_annotated_path, 'w', encoding='utf-8') as f:
+                        f.write(annotated_new_content)
+                    result['new_annotated'] = str(new_annotated_path)
+        
+        return result
+    
+    def _create_annotation_header(self, file_change: FileChange, change_summary: Dict[str, int], 
+                                 file_type: str) -> str:
+        """Create informative header for annotated files"""
+        if self.annotation_style == "html":
+            # Get the CSS file path
+            css_path = Path(__file__).parent / "diff_styles.css"
+            css_content = ""
+            try:
+                with open(css_path, 'r', encoding='utf-8') as f:
+                    css_content = f.read()
+            except FileNotFoundError:
+                pass  # Use inline styles if CSS file not found
+            
+            header = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Annotated {file_type.upper()} - {file_change.filename}</title>
+    <style>
+{css_content}
+    </style>
+</head>
+<body>
+    <div class="file-header">
+        <h2>ANNOTATED {file_type.upper()} VERSION - {file_change.filename}</h2>
+        <p><strong>Repository:</strong> {file_change.repo}</p>
+        <p><strong>Status:</strong> {file_change.status}</p>
+"""
+        else:
+            header = f"""# 
+# ANNOTATED {file_type.upper()} VERSION - {file_change.filename}
+# Repository: {file_change.repo}
+# Status: {file_change.status}
+"""
+        
+        if file_type == "old":
+            if self.annotation_style == "html":
+                header += f"""        <p><strong>Old SHA:</strong> {file_change.old_sha}</p>
+    </div>
+    
+    <div class="legend">
+        <h3>Legend:</h3>
+        <div class="legend-item legend-changed">[CHANGED] Modified in new version</div>
+        <div class="legend-item legend-removed">[REMOVED] Deleted in new version</div>
+        <div>Lines without markers: Unchanged</div>
+        
+        <h4>Change Summary:</h4>
+        <ul>
+            <li>Lines changed: {change_summary['lines_changed']}</li>
+            <li>Lines removed: {change_summary['lines_removed']}</li>
+            <li>Lines unchanged: {change_summary['lines_unchanged']}</li>
+        </ul>
+    </div>
+    
+    <div class="code-content">
+        <pre>"""
+            else:
+                header += f"""# Old SHA: {file_change.old_sha}
+# Lines marked [CHANGED]: Modified in new version
+# Lines marked [REMOVED]: Deleted in new version
+# Lines without markers: Unchanged
+#
+# Change Summary:
+# - Lines changed: {change_summary['lines_changed']}
+# - Lines removed: {change_summary['lines_removed']}
+# - Lines unchanged: {change_summary['lines_unchanged']}
+#
+# ============================================================================
+
+"""
+        else:  # new
+            if self.annotation_style == "html":
+                header += f"""        <p><strong>New SHA:</strong> {file_change.new_sha}</p>
+    </div>
+    
+    <div class="legend">
+        <h3>Legend:</h3>
+        <div class="legend-item legend-added">[ADDED] New in this version</div>
+        <div class="legend-item legend-changed">[CHANGED] Modified from old version</div>
+        <div>Lines without markers: Unchanged</div>
+        
+        <h4>Change Summary:</h4>
+        <ul>
+            <li>Lines added: {change_summary['lines_added']}</li>
+            <li>Lines changed: {change_summary['lines_changed']}</li>
+            <li>Lines unchanged: {change_summary['lines_unchanged']}</li>
+        </ul>
+    </div>
+    
+    <div class="code-content">
+        <pre>"""
+            else:
+                header += f"""# New SHA: {file_change.new_sha}
+# Lines marked [ADDED]: New in this version
+# Lines marked [CHANGED]: Modified from old version
+# Lines without markers: Unchanged
+#
+# Change Summary:
+# - Lines added: {change_summary['lines_added']}
+# - Lines changed: {change_summary['lines_changed']}
+# - Lines unchanged: {change_summary['lines_unchanged']}
+#
+# ============================================================================
+
+"""
+        
+        return header
     
     def generate_comprehensive_report(self, results: List[AnalysisResult], 
                                     output_filename: str = "github_changes_comprehensive_report.txt") -> str:
@@ -574,17 +916,20 @@ class ReportGenerator:
 class GitHubChangeTracker:
     """Main class for tracking GitHub repository changes"""
     
-    def __init__(self, token: Optional[str] = None, output_dir: str = "github_analysis_output"):
+    def __init__(self, token: Optional[str] = None, output_dir: str = "github_analysis_output", 
+                 annotation_style: str = "comment"):
         # If no token provided, try to get from environment
         if token is None:
             token = os.getenv('GITHUB_TOKEN')
         
         self.github_analyzer = GitHubAnalyzer(token, output_dir)
-        self.report_generator = ReportGenerator(Path(output_dir))
+        self.report_generator = ReportGenerator(Path(output_dir), annotation_style)
         self.output_dir = Path(output_dir)
+        self.annotation_style = annotation_style
     
     def analyze_repositories(self, repos: List[str], base_ref: str = "HEAD~1", 
-                           head_ref: str = "HEAD", save_files: bool = True, save_diffs: bool = True) -> List[AnalysisResult]:
+                           head_ref: str = "HEAD", save_files: bool = True, save_diffs: bool = True,
+                           save_annotated: bool = True) -> List[AnalysisResult]:
         """Analyze multiple repositories and generate comprehensive reports"""
         all_results = []
         
@@ -596,14 +941,19 @@ class GitHubChangeTracker:
                 # Save individual file versions and diffs if requested
                 if save_files:
                     for file_change in result.file_changes:
-                        # Save old and new file versions
-                        old_path, new_path = self.report_generator.save_file_versions(
-                            file_change, f"file_versions_{base_ref}_{head_ref}"
+                        # Save old and new file versions (including annotated versions)
+                        file_paths = self.report_generator.save_file_versions(
+                            file_change, f"file_versions_{base_ref}_{head_ref}", save_annotated
                         )
-                        if old_path:
-                            print(f"  Saved old version: {old_path}")
-                        if new_path:
-                            print(f"  Saved new version: {new_path}")
+                        
+                        if file_paths['old']:
+                            print(f"  Saved old version: {file_paths['old']}")
+                        if file_paths['new']:
+                            print(f"  Saved new version: {file_paths['new']}")
+                        if file_paths['old_annotated']:
+                            print(f"  Saved annotated old version: {file_paths['old_annotated']}")
+                        if file_paths['new_annotated']:
+                            print(f"  Saved annotated new version: {file_paths['new_annotated']}")
                         
                         # Save diff files for function/class changes
                         if save_diffs and file_change.filename in result.function_changes:

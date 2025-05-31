@@ -1,0 +1,90 @@
+/* CSS styles for HTML annotated diff files */
+
+body {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    background-color: #f8f8f8;
+    margin: 20px;
+    color: #333;
+}
+
+.file-header {
+    background-color: #e8e8e8;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.code-content {
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    overflow-x: auto;
+}
+
+.changed-line {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding-left: 8px;
+    margin: 1px 0;
+    display: block;
+}
+
+.added-line {
+    background-color: #d4edda;
+    border-left: 4px solid #28a745;
+    padding-left: 8px;
+    margin: 1px 0;
+    display: block;
+}
+
+.removed-line {
+    background-color: #f8d7da;
+    border-left: 4px solid #dc3545;
+    padding-left: 8px;
+    margin: 1px 0;
+    display: block;
+    text-decoration: line-through;
+}
+
+.unchanged-line {
+    margin: 1px 0;
+    display: block;
+}
+
+/* Legend */
+.legend {
+    background-color: #f1f1f1;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 15px;
+    font-size: 11px;
+}
+
+.legend-item {
+    margin: 5px 0;
+    padding: 2px 8px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-right: 15px;
+}
+
+.legend-changed {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+}
+
+.legend-added {
+    background-color: #d4edda;
+    border-left: 4px solid #28a745;
+}
+
+.legend-removed {
+    background-color: #f8d7da;
+    border-left: 4px solid #dc3545;
+} 

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Annotated OLD - calculator.py</title>
+    <style>
+/* CSS styles for HTML annotated diff files */
+
+body {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    background-color: #f8f8f8;
+    margin: 20px;
+    color: #333;
+}
+
+.file-header {
+    background-color: #e8e8e8;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.code-content {
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    overflow-x: auto;
+}
+
+.changed-line {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding-left: 8px;
+    margin: 1px 0;
+    display: block;
+}
+
+.added-line {
+    background-color: #d4edda;
+    border-left: 4px solid #28a745;
+    padding-left: 8px;
+    margin: 1px 0;
+    display: block;
+}
+
+.removed-line {
+    background-color: #f8d7da;
+    border-left: 4px solid #dc3545;
+    padding-left: 8px;
+    margin: 1px 0;
+    display: block;
+    text-decoration: line-through;
+}
+
+.unchanged-line {
+    margin: 1px 0;
+    display: block;
+}
+
+/* Legend */
+.legend {
+    background-color: #f1f1f1;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 15px;
+    font-size: 11px;
+}
+
+.legend-item {
+    margin: 5px 0;
+    padding: 2px 8px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-right: 15px;
+}
+
+.legend-changed {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+}
+
+.legend-added {
+    background-color: #d4edda;
+    border-left: 4px solid #28a745;
+}
+
+.legend-removed {
+    background-color: #f8d7da;
+    border-left: 4px solid #dc3545;
+} 
+    </style>
+</head>
+<body>
+    <div class="file-header">
+        <h2>ANNOTATED OLD VERSION - calculator.py</h2>
+        <p><strong>Repository:</strong> demo/example</p>
+        <p><strong>Status:</strong> modified</p>
+        <p><strong>Old SHA:</strong> abc123</p>
+    </div>
+    
+    <div class="legend">
+        <h3>Legend:</h3>
+        <div class="legend-item legend-changed">[CHANGED] Modified in new version</div>
+        <div class="legend-item legend-removed">[REMOVED] Deleted in new version</div>
+        <div>Lines without markers: Unchanged</div>
+        
+        <h4>Change Summary:</h4>
+        <ul>
+            <li>Lines changed: 11</li>
+            <li>Lines removed: 0</li>
+            <li>Lines unchanged: 27</li>
+        </ul>
+    </div>
+    
+    <div class="code-content">
+        <pre><span class="unchanged-line">#!/usr/bin/env python3</span>
+<span class="unchanged-line">"""</span>
+<span class="changed-line">Example Python module - OLD VERSION</span>
+<span class="unchanged-line">"""</span>
+<span class="unchanged-line"></span>
+<span class="unchanged-line">import os</span>
+<span class="unchanged-line">import sys</span>
+<span class="unchanged-line"></span>
+<span class="unchanged-line">class Calculator:</span>
+<span class="changed-line">    """A simple calculator class"""</span>
+<span class="unchanged-line">    </span>
+<span class="changed-line">    def __init__(self):</span>
+<span class="unchanged-line">        self.history = []</span>
+<span class="unchanged-line">    </span>
+<span class="unchanged-line">    def add(self, a, b):</span>
+<span class="unchanged-line">        """Add two numbers"""</span>
+<span class="changed-line">        result = a + b</span>
+<span class="unchanged-line">        self.history.append(f"{a} + {b} = {result}")</span>
+<span class="unchanged-line">        return result</span>
+<span class="unchanged-line">    </span>
+<span class="unchanged-line">    def subtract(self, a, b):</span>
+<span class="unchanged-line">        """Subtract b from a"""</span>
+<span class="changed-line">        result = a - b</span>
+<span class="unchanged-line">        self.history.append(f"{a} - {b} = {result}")</span>
+<span class="unchanged-line">        return result</span>
+<span class="unchanged-line">    </span>
+<span class="changed-line">    def old_method(self):</span>
+<span class="changed-line">        """This method will be removed"""</span>
+<span class="changed-line">        print("This method is deprecated")</span>
+<span class="changed-line">        return None</span>
+<span class="unchanged-line"></span>
+<span class="unchanged-line">def helper_function():</span>
+<span class="unchanged-line">    """A helper function"""</span>
+<span class="unchanged-line">    return "helper"</span>
+<span class="unchanged-line"></span>
+<span class="changed-line"># Global constant</span>
+<span class="changed-line">VERSION = "1.0.0"</span>
+<span class="unchanged-line">DEBUG = False</span>
+        </pre>
+    </div>
+</body>
+</html>

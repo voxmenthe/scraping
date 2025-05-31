@@ -43,6 +43,13 @@ Examples:
   
   # Skip diff file generation (saves space)
   python -m scraping.github_cli owner/repo --no-diffs
+  
+  # Skip annotated diff files
+  python -m scraping.github_cli owner/repo --no-annotate-diffs
+  
+  # Use different annotation styles
+  python -m scraping.github_cli owner/repo --annotation-style=inline
+  python -m scraping.github_cli owner/repo --annotation-style=html
         """
     )
     
@@ -111,6 +118,20 @@ Examples:
     )
     
     parser.add_argument(
+        '--no-annotate-diffs',
+        action='store_true',
+        help='Do not generate annotated diff files showing changes inline'
+    )
+    
+    parser.add_argument(
+        '--annotation-style',
+        type=str,
+        choices=['comment', 'inline', 'html'],
+        default='comment',
+        help='Style for annotating changes in diff files (default: comment)'
+    )
+    
+    parser.add_argument(
         '--verbose',
         '-v',
         action='store_true',
@@ -175,7 +196,8 @@ def main():
         # Pass the explicit token if provided, otherwise let GitHubChangeTracker handle environment lookup
         tracker = GitHubChangeTracker(
             token=args.token,  # This will be None if not provided, which is fine
-            output_dir=args.output_dir
+            output_dir=args.output_dir,
+            annotation_style=args.annotation_style
         )
     except ValueError as e:
         print(f"Error: {e}")
@@ -191,6 +213,8 @@ def main():
         print(f"Head reference: {args.head}")
         print(f"Save files: {not args.no_save_files}")
         print(f"Save diffs: {not args.no_diffs}")
+        print(f"Save annotated diffs: {not args.no_annotate_diffs}")
+        print(f"Annotation style: {args.annotation_style}")
     
     try:
         if args.history:
@@ -218,7 +242,8 @@ def main():
                 base_ref=args.base,
                 head_ref=args.head,
                 save_files=not args.no_save_files,
-                save_diffs=not args.no_diffs
+                save_diffs=not args.no_diffs,
+                save_annotated=not args.no_annotate_diffs
             )
             
             if results:
